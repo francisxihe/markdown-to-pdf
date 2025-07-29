@@ -1,0 +1,58 @@
+{
+  "name": "markdown-to-pdf",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.1",
+    "markdown-it": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@types/markdown-it": "^14.1.2",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "@typescript-eslint/eslint-plugin": "^8.38.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^9.32.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "jiti": "^2.5.1",
+    "typescript": "^5.8.3",
+    "vite": "^5.0.8"
+  },
+  "description": "一个基于 React + TypeScript 的在线 Markdown 转 PDF 工具，支持智能分页和实时预览",
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "keywords": [
+    "markdown",
+    "pdf",
+    "react",
+    "typescript",
+    "converter",
+    "pagination",
+    "preview"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/markdown-to-pdf.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/markdown-to-pdf/issues"
+  },
+  "homepage": "https://github.com/yourusername/markdown-to-pdf#readme"
+}
