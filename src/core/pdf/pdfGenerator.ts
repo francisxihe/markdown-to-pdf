@@ -1,5 +1,5 @@
-import type { PDFOptions } from "./types";
-import { createCanvasFromElement, canvasToDataURL } from "./canvasUtils";
+import type { PDFOptions } from "../types";
+import { createCanvasFromElement, canvasToDataURL } from "../canvas";
 import { createPDFFromImage, savePDF, getA4Dimensions } from "./pdfUtils";
 
 /**
@@ -34,20 +34,3 @@ export const generatePDF = async (
     throw error;
   }
 };
-
-// 导出预设配置和便捷函数
-export {
-  generateHighQualityPDF,
-  generateCompactPDF,
-  generateStandardPDF,
-  HIGH_QUALITY_PRESET,
-  STANDARD_PRESET,
-  COMPACT_PRESET,
-} from "./presets";
-
-// 导出类型定义
-export type { PDFOptions, CanvasOptions, PDFDimensions } from "./types";
-
-// 导出工具函数
-export { createCanvasFromElement, canvasToDataURL } from "./canvasUtils";
-export { createPDFFromImage, savePDF, getA4Dimensions } from "./pdfUtils";

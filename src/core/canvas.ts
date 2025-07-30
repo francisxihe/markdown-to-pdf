@@ -13,16 +13,17 @@ export const createCanvasFromElement = async (
 ): Promise<HTMLCanvasElement> => {
   // 获取设备像素比，确保在高DPI设备上也能正确渲染
   const devicePixelRatio = window.devicePixelRatio || 1;
-  
+
   // 计算固定的逻辑尺寸（基于A4纸比例）
-  const fixedWidth = 800; // 固定逻辑宽度
+  const fixedWidth = 1200; // 固定逻辑宽度
+  // 计算固定的逻辑高度（保持元素比例）
   const aspectRatio = element.scrollHeight / element.scrollWidth;
   const fixedHeight = fixedWidth * aspectRatio;
-  
+
   // 计算实际渲染尺寸（考虑设备像素比和缩放）
   const scale = options.scale || 2;
   const renderScale = scale * devicePixelRatio;
-  
+
   const defaultOptions: CanvasOptions = {
     scale: renderScale,
     useCORS: true,

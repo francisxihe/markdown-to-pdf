@@ -1,6 +1,13 @@
 import { useState, useRef, ChangeEvent } from "react";
 import MarkdownIt from "markdown-it";
-import { generatePaginationPreview, downloadPDFFromPreview, type PDFOptions, type PreviewResult } from "./utils";
+import {
+  generatePaginationPreview,
+  generatePDF,
+  type PDFOptions,
+  type PreviewResult,
+} from "./core";
+import { handleDownloadCSSTemplate } from "./actions/handleDownloadCSSTemplate";
+import { useUploadCss } from "./actions/handleUploadCss";
 
 type QualityLevel = "compact" | "standard" | "high";
 
@@ -63,8 +70,19 @@ function App() {
   const [markdown, setMarkdown] = useState(defaultMarkdown);
   const [isGenerating, setIsGenerating] = useState(false);
   const [quality, setQuality] = useState<QualityLevel>("standard");
-  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(null);
+  const [previewResult, setPreviewResult] = useState<PreviewResult | null>(
+    null
+  );
   const previewRef = useRef(null);
+
+  const {
+    customCSS,
+    cssFileName,
+    fileInputRef,
+    handleCSSFileChange,
+    handleClearCSS,
+    handleImportCSS,
+  } = useUploadCss();
 
   const handleMarkdownChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setMarkdown(e.target.value);
@@ -85,11 +103,15 @@ function App() {
         scale: qualityOptions[quality].scale,
         quality: qualityOptions[quality].quality,
       };
-      
+
       // 生成分页预览
-      const result = await generatePaginationPreview(renderedHTML, options);
+      const result = await generatePaginationPreview(
+        renderedHTML,
+        options,
+        customCSS
+      );
+
       setPreviewResult(result);
-      
     } catch (error) {
       console.error("预览生成失败:", error);
       alert("预览生成失败，请检查控制台错误信息");
@@ -98,9 +120,27 @@ function App() {
     }
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
     if (previewResult) {
-      downloadPDFFromPreview(previewResult, "markdown-document.pdf");
+      try {
+        // 从预览结果重新生成HTML内容
+        const htmlContent = previewResult.pages
+          .map((page) => page.elements.join(""))
+          .join("");
+
+        await generatePDF(
+          htmlContent,
+          "markdown-document.pdf",
+          {
+            scale: 2,
+            quality: 0.85,
+          },
+          customCSS
+        );
+      } catch (error) {
+        console.error("PDF下载失败:", error);
+        alert("PDF下载失败，请检查控制台错误信息");
+      }
     }
   };
 
@@ -120,7 +160,6 @@ function App() {
 
   return (
     <div className="container">
-
       <div className="controls">
         <h1 style={{ margin: 0, fontSize: "24px", color: "#333" }}>
           Markdown to PDF
@@ -143,6 +182,38 @@ function App() {
               <option value="high">高质量 (大文件)</option>
             </select>
           </label>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".css"
+              onChange={handleCSSFileChange}
+              style={{ display: "none" }}
+            />
+            <button
+              className="btn btn-secondary"
+              onClick={handleDownloadCSSTemplate}
+            >
+              下载CSS模板
+            </button>
+            <button className="btn btn-secondary" onClick={handleImportCSS}>
+              导入CSS
+            </button>
+            {cssFileName && (
+              <>
+                <span style={{ fontSize: "12px", color: "#666" }}>
+                  {cssFileName}
+                </span>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleClearCSS}
+                  style={{ padding: "4px 8px", fontSize: "12px" }}
+                >
+                  清除
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: "12px" }}>
           <button className="btn btn-secondary" onClick={handleLoadExample}>
@@ -174,11 +245,15 @@ function App() {
 
         <div className="editor-panel">
           <div className="panel-header">实时预览</div>
-          <div
-            ref={previewRef}
-            className="preview markdown-content"
-            dangerouslySetInnerHTML={{ __html: renderedHTML }}
-          />
+          <div className="preview markdown-content">
+            {customCSS && (
+              <style dangerouslySetInnerHTML={{ __html: customCSS }} />
+            )}
+            <div
+              ref={previewRef}
+              dangerouslySetInnerHTML={{ __html: renderedHTML }}
+            />
+          </div>
         </div>
       </div>
 
@@ -216,7 +291,7 @@ function App() {
                 共 {previewResult.totalPages} 页，确认无误后可下载PDF
               </p>
             </div>
-            
+
             <div
               style={{
                 display: "grid",
@@ -237,7 +312,13 @@ function App() {
                     textAlign: "center",
                   }}
                 >
-                  <div style={{ fontSize: "12px", color: "#666", marginBottom: "8px" }}>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#666",
+                      marginBottom: "8px",
+                    }}
+                  >
                     第 {page.pageNumber} 页
                   </div>
                   <canvas
@@ -261,8 +342,10 @@ function App() {
                 </div>
               ))}
             </div>
-            
-            <div style={{ display: "flex", justifyContent: "center", gap: "12px" }}>
+
+            <div
+              style={{ display: "flex", justifyContent: "center", gap: "12px" }}
+            >
               <button
                 onClick={handleClosePreview}
                 style={{

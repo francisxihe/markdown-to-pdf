@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import type { PDFDimensions } from "./types";
+import type { PDFDimensions } from "../types";
 
 /**
  * 获取A4纸张的标准尺寸

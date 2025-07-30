@@ -1,0 +1,181 @@
+/* 示例CSS样式文件 - 用于测试Markdown to PDF的自定义样式功能 */
+
+/* 全局样式 */
+body {
+  font-family: 'Georgia', serif;
+  line-height: 1.8;
+  color: #2c3e50;
+}
+
+/* 标题样式 */
+h1 {
+  color: #e74c3c;
+  font-size: 2.5em;
+  text-align: center;
+  border-bottom: 3px solid #e74c3c;
+  padding-bottom: 15px;
+  margin-bottom: 30px;
+}
+
+h2 {
+  color: #3498db;
+  font-size: 1.8em;
+  border-left: 5px solid #3498db;
+  padding-left: 15px;
+  margin-top: 30px;
+}
+
+h3 {
+  color: #f39c12;
+  font-size: 1.4em;
+  text-decoration: underline;
+}
+
+/* 段落样式 */
+p {
+  text-align: justify;
+  margin-bottom: 20px;
+  text-indent: 2em;
+}
+
+/* 代码块样式 */
+pre {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+code {
+  background: #f8f9fa;
+  color: #e83e8c;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+/* 引用样式 */
+blockquote {
+  background: #f9f9f9;
+  border-left: 8px solid #9b59b6;
+  padding: 20px;
+  margin: 20px 0;
+  font-style: italic;
+  border-radius: 0 8px 8px 0;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* 列表样式 */
+ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ul li {
+  position: relative;
+  padding-left: 25px;
+  margin-bottom: 10px;
+}
+
+ul li:before {
+  content: "▶";
+  color: #e74c3c;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+ol li {
+  margin-bottom: 10px;
+  padding-left: 10px;
+}
+
+/* 表格样式 */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px;
+  text-align: left;
+  font-weight: bold;
+}
+
+td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+tr:hover {
+  background-color: #e8f4fd;
+}
+
+/* 分隔线样式 */
+hr {
+  border: none;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2, #667eea);
+  margin: 30px 0;
+  border-radius: 2px;
+}
+
+/* 强调文本样式 */
+strong {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+em {
+  color: #9b59b6;
+  font-style: italic;
+}
+
+/* 链接样式 */
+a {
+  color: #3498db;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: border-bottom 0.3s ease;
+}
+
+a:hover {
+  border-bottom: 2px solid #3498db;
+}
+
+/* 自定义类样式示例 */
+.highlight {
+  background: linear-gradient(120deg, #a8edea 0%, #fed6e3 100%);
+  padding: 10px;
+  border-radius: 5px;
+  margin: 10px 0;
+}
+
+.warning {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 15px;
+  border-radius: 5px;
+  margin: 15px 0;
+}
+
+.info {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+  padding: 15px;
+  border-radius: 5px;
+  margin: 15px 0;
+}

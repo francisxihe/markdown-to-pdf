@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import type { PDFOptions } from "./types";
+import { createCanvasFromElement } from "./canvas";
+import { createHiddenDOMForPDF, cleanupHiddenDOM } from "./dom/createDom";
 
 export interface PagePreview {
   pageNumber: number;
@@ -40,62 +41,77 @@ export class SmartPagination {
    */
   async generatePreview(
     htmlContent: string,
-    options: PDFOptions = {}
+    options: PDFOptions = {},
+    customCSS?: string
   ): Promise<PreviewResult> {
     // 重置状态
     this.pdf = new jsPDF("p", "mm", "a4");
     this.currentY = 0;
-    
+
     const pages: PagePreview[] = [];
     let currentPageElements: string[] = [];
-    
+
     // 创建临时容器
-    const container = this.createContainer(htmlContent, false);
-    
+    const container = this.createContainer(htmlContent, false, customCSS);
+
     try {
       // 获取所有可分页的元素
       const elements = this.getPageableElements(container);
-      
+
       // 逐个处理元素并智能分页
       for (const element of elements) {
-        const elementHeight = await this.calculateElementHeight(element, options);
-        
+        const elementHeight = await this.calculateElementHeight(
+          element,
+          options,
+          customCSS
+        );
+
         // 检查是否需要分页
-        if (this.currentY + elementHeight > this.contentHeight && currentPageElements.length > 0) {
+        if (
+          this.currentY + elementHeight > this.contentHeight &&
+          currentPageElements.length > 0
+        ) {
           // 生成当前页的预览
-          const pageCanvas = await this.generatePageCanvas(currentPageElements, options);
+          const pageCanvas = await this.generatePageCanvas(
+            currentPageElements,
+            options,
+            customCSS
+          );
           pages.push({
             pageNumber: pages.length + 1,
             canvas: pageCanvas,
-            elements: [...currentPageElements]
+            elements: [...currentPageElements],
           });
-          
+
           // 开始新页
           this.addNewPage();
           currentPageElements = [];
         }
-        
+
         // 添加元素到当前页
         currentPageElements.push(element.outerHTML);
         this.currentY += elementHeight;
       }
-      
+
       // 处理最后一页
       if (currentPageElements.length > 0) {
-        const pageCanvas = await this.generatePageCanvas(currentPageElements, options);
+        const pageCanvas = await this.generatePageCanvas(
+          currentPageElements,
+          options,
+          customCSS
+        );
         pages.push({
           pageNumber: pages.length + 1,
           canvas: pageCanvas,
-          elements: [...currentPageElements]
+          elements: [...currentPageElements],
         });
       }
-      
+
       return {
         pages,
         totalPages: pages.length,
-        pdf: this.pdf
+        pdf: this.pdf,
       };
-      
     } finally {
       // 清理临时容器
       if (container.parentNode) {
@@ -105,7 +121,7 @@ export class SmartPagination {
   }
 
   /**
-   * 生成智能分页PDF
+   * 生成智能分页PDF（使用统一的标准化容器）
    * @param htmlContent - HTML内容字符串
    * @param filename - 文件名
    * @param options - PDF选项
@@ -113,28 +129,54 @@ export class SmartPagination {
   async generatePDF(
     htmlContent: string,
     filename: string,
-    options: PDFOptions = {}
+    options: PDFOptions = {},
+    customCSS?: string
   ): Promise<void> {
-    // 创建临时容器
-    const container = this.createContainer(htmlContent, false);
-    
+    let hiddenDOM: HTMLElement | null = null;
+
     try {
-      // 获取所有可分页的元素
-      const elements = this.getPageableElements(container);
-      
-      // 逐个处理元素并智能分页
-      for (const element of elements) {
-        await this.processElement(element, options);
+      // 1. 使用统一的标准化容器创建方法
+      hiddenDOM = createHiddenDOMForPDF(htmlContent, customCSS);
+
+      // 等待字体和样式加载完成
+      await new Promise((resolve) => {
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready.then(resolve);
+        } else {
+          setTimeout(resolve, 100);
+        }
+      });
+
+      // 强制重新计算布局
+      void hiddenDOM.offsetHeight;
+
+      // 2. 从标准化容器获取处理后的HTML内容
+      const processedHTML = hiddenDOM.innerHTML;
+
+      // 3. 创建用于分页的临时容器
+      const container = this.createContainer(processedHTML, false, customCSS);
+
+      try {
+        // 获取所有可分页的元素
+        const elements = this.getPageableElements(container);
+
+        // 处理每个元素
+        for (const element of elements) {
+          await this.processElement(element, options, customCSS);
+        }
+
+        // 保存PDF
+        this.pdf.save(filename);
+      } finally {
+        // 清理分页容器
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
       }
-      
-      // 保存PDF
-      this.pdf.save(filename);
-      console.log("PDF生成成功:", filename);
-      
     } finally {
-      // 清理临时容器
-      if (container.parentNode) {
-        container.parentNode.removeChild(container);
+      // 4. 清理标准化容器
+      if (hiddenDOM) {
+        cleanupHiddenDOM(hiddenDOM);
       }
     }
   }
@@ -143,10 +185,15 @@ export class SmartPagination {
    * 创建临时容器
    * @param htmlContent - HTML内容
    * @param showPreview - 是否显示预览
+   * @param customCSS - 自定义CSS样式
    */
-  private createContainer(htmlContent: string, showPreview?: boolean): HTMLElement {
-    const container = document.createElement('div');
-    
+  private createContainer(
+    htmlContent: string,
+    showPreview?: boolean,
+    customCSS?: string
+  ): HTMLElement {
+    const container = document.createElement("div");
+
     if (showPreview) {
       // 预览模式：显示在页面上
       container.style.cssText = `
@@ -169,9 +216,9 @@ export class SmartPagination {
         overflow: auto;
         z-index: 9999;
       `;
-      
+
       // 添加预览标题
-      const title = document.createElement('div');
+      const title = document.createElement("div");
       title.style.cssText = `
         position: sticky;
         top: 0;
@@ -183,7 +230,7 @@ export class SmartPagination {
         font-size: 12px;
         border-radius: 6px 6px 0 0;
       `;
-      title.textContent = 'PDF 分页预览';
+      title.textContent = "PDF 分页预览";
       container.appendChild(title);
     } else {
       // 正常模式：隐藏在页面外
@@ -203,17 +250,25 @@ export class SmartPagination {
         overflow: visible;
       `;
     }
-    
+
     // 创建内容容器
-    const contentDiv = document.createElement('div');
+    const contentDiv = document.createElement("div");
     contentDiv.innerHTML = htmlContent;
+
+    // 如果有自定义CSS，添加到容器中
+    if (customCSS) {
+      const styleElement = document.createElement("style");
+      styleElement.textContent = customCSS;
+      container.appendChild(styleElement);
+    }
+
     container.appendChild(contentDiv);
-    
+
     document.body.appendChild(container);
-    
+
     // 强制重新计算布局
     void container.offsetHeight;
-    
+
     return container;
   }
 
@@ -229,14 +284,31 @@ export class SmartPagination {
         acceptNode: (node: Node) => {
           const element = node as HTMLElement;
           const tagName = element.tagName.toLowerCase();
-          
+
           // 选择块级元素作为分页单位
-          if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'div', 'blockquote', 'pre', 'ul', 'ol', 'table', 'hr'].includes(tagName)) {
+          if (
+            [
+              "h1",
+              "h2",
+              "h3",
+              "h4",
+              "h5",
+              "h6",
+              "p",
+              "div",
+              "blockquote",
+              "pre",
+              "ul",
+              "ol",
+              "table",
+              "hr",
+            ].includes(tagName)
+          ) {
             return NodeFilter.FILTER_ACCEPT;
           }
-          
+
           return NodeFilter.FILTER_SKIP;
-        }
+        },
       }
     );
 
@@ -252,34 +324,38 @@ export class SmartPagination {
   /**
    * 处理单个元素
    */
-  private async processElement(element: HTMLElement, options: PDFOptions): Promise<void> {
+  private async processElement(
+    element: HTMLElement,
+    options: PDFOptions,
+    customCSS?: string
+  ): Promise<void> {
     // 创建元素的独立容器
-    const elementContainer = this.createElementContainer(element, options.showPreview);
-    
+    const elementContainer = this.createElementContainer(
+      element,
+      options.showPreview,
+      customCSS
+    );
+
     try {
       // 生成元素的Canvas
-      const canvas = await html2canvas(elementContainer, {
+      const canvas = await createCanvasFromElement(elementContainer, {
         scale: options.scale || 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
+        logging: false,
         width: elementContainer.scrollWidth,
         height: elementContainer.scrollHeight,
       });
-      
+
       // 计算元素在PDF中的高度
       const elementHeight = (canvas.height * this.contentWidth) / canvas.width;
-      
+
       // 检查是否需要分页
       if (this.currentY + elementHeight > this.contentHeight) {
         this.addNewPage();
-        
-        // 在预览模式下显示分页信息
-        if (options.showPreview) {
-          console.log(`分页: 元素 ${element.tagName} 触发新页面`);
-        }
       }
-      
+
       // 添加元素到PDF
       const imgData = canvas.toDataURL("image/jpeg", options.quality || 0.85);
       this.pdf.addImage(
@@ -290,14 +366,8 @@ export class SmartPagination {
         this.contentWidth,
         elementHeight
       );
-      
+
       this.currentY += elementHeight;
-      
-      // 在预览模式下添加延迟，便于观察
-      if (options.showPreview) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
     } finally {
       // 清理临时容器（如果不是预览模式）
       if (!options.showPreview && elementContainer.parentNode) {
@@ -310,10 +380,15 @@ export class SmartPagination {
    * 为单个元素创建容器
    * @param element - 要处理的元素
    * @param showPreview - 是否显示预览
+   * @param customCSS - 自定义CSS样式
    */
-  private createElementContainer(element: HTMLElement, showPreview?: boolean): HTMLElement {
-    const container = document.createElement('div');
-    
+  private createElementContainer(
+    element: HTMLElement,
+    showPreview?: boolean,
+    customCSS?: string
+  ): HTMLElement {
+    const container = document.createElement("div");
+
     if (showPreview) {
       // 预览模式：在主预览容器旁边显示当前处理的元素
       container.style.cssText = `
@@ -336,9 +411,9 @@ export class SmartPagination {
         overflow: auto;
         z-index: 10000;
       `;
-      
+
       // 添加当前处理元素的标题
-      const title = document.createElement('div');
+      const title = document.createElement("div");
       title.style.cssText = `
         position: sticky;
         top: 0;
@@ -370,33 +445,49 @@ export class SmartPagination {
         overflow: visible;
       `;
     }
-    
+
+    // 如果有自定义CSS，添加到容器中
+    if (customCSS) {
+      const styleElement = document.createElement("style");
+      styleElement.textContent = customCSS;
+      container.appendChild(styleElement);
+    }
+
     // 克隆元素内容
     container.appendChild(element.cloneNode(true));
     document.body.appendChild(container);
-    
+
     // 强制重新计算布局
     void container.offsetHeight;
-    
+
     return container;
   }
 
   /**
    * 计算元素高度
    */
-  private async calculateElementHeight(element: HTMLElement, options: PDFOptions): Promise<number> {
-    const elementContainer = this.createElementContainer(element, false);
-    
+  private async calculateElementHeight(
+    element: HTMLElement,
+    options: PDFOptions,
+    customCSS?: string
+  ): Promise<number> {
+    const elementContainer = this.createElementContainer(
+      element,
+      false,
+      customCSS
+    );
+
     try {
-      const canvas = await html2canvas(elementContainer, {
+      const canvas = await createCanvasFromElement(elementContainer, {
         scale: options.scale || 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
+        logging: false,
         width: elementContainer.scrollWidth,
         height: elementContainer.scrollHeight,
       });
-      
+
       return (canvas.height * this.contentWidth) / canvas.width;
     } finally {
       if (elementContainer.parentNode) {
@@ -408,8 +499,12 @@ export class SmartPagination {
   /**
    * 生成页面Canvas
    */
-  private async generatePageCanvas(elements: string[], options: PDFOptions): Promise<HTMLCanvasElement> {
-    const pageContainer = document.createElement('div');
+  private async generatePageCanvas(
+    elements: string[],
+    options: PDFOptions,
+    customCSS?: string
+  ): Promise<HTMLCanvasElement> {
+    const pageContainer = document.createElement("div");
     pageContainer.style.cssText = `
       position: fixed;
       left: -9999px;
@@ -425,22 +520,31 @@ export class SmartPagination {
       box-sizing: border-box;
       overflow: visible;
     `;
-    
-    pageContainer.innerHTML = elements.join('');
+
+    pageContainer.innerHTML = elements.join("");
+
+    // 如果有自定义CSS，添加到页面容器中
+    if (customCSS) {
+      const styleElement = document.createElement("style");
+      styleElement.textContent = customCSS;
+      pageContainer.appendChild(styleElement);
+    }
+
     document.body.appendChild(pageContainer);
-    
+
     try {
       void pageContainer.offsetHeight;
-      
-      const canvas = await html2canvas(pageContainer, {
+
+      const canvas = await createCanvasFromElement(pageContainer, {
         scale: options.scale || 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
+        logging: false,
         width: pageContainer.scrollWidth,
         height: pageContainer.scrollHeight,
       });
-      
+
       return canvas;
     } finally {
       if (pageContainer.parentNode) {
@@ -458,33 +562,3 @@ export class SmartPagination {
   }
 }
 
-/**
- * 生成分页预览的便捷函数
- */
-export const generatePaginationPreview = async (
-  htmlContent: string,
-  options: PDFOptions = {}
-): Promise<PreviewResult> => {
-  const paginator = new SmartPagination();
-  return await paginator.generatePreview(htmlContent, options);
-};
-
-/**
- * 从预览结果下载PDF
- */
-export const downloadPDFFromPreview = (previewResult: PreviewResult, filename: string = "document.pdf"): void => {
-  previewResult.pdf.save(filename);
-  console.log("PDF下载成功:", filename);
-};
-
-/**
- * 生成智能分页PDF的便捷函数（直接下载）
- */
-export const generateSmartPaginationPDF = async (
-  htmlContent: string,
-  filename: string = "document.pdf",
-  options: PDFOptions = {}
-): Promise<void> => {
-  const paginator = new SmartPagination();
-  await paginator.generatePDF(htmlContent, filename, options);
-};
