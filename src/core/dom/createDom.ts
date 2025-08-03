@@ -15,8 +15,8 @@ export const createHiddenDOMForPDF = (
     position: fixed;
     left: -9999px;
     top: 0;
-    width: 800px;
-    padding: 40px;
+    width: 1200px;
+    padding: 0;
     background-color: #ffffff;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
@@ -24,11 +24,11 @@ export const createHiddenDOMForPDF = (
     color: #333333;
     box-sizing: border-box;
     overflow: visible;
-    zoom: 1;
-    transform: scale(1);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    white-space: normal;
+    word-wrap: break-word;
   `;
 
   // 添加自定义CSS

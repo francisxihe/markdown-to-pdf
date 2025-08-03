@@ -1,11 +1,6 @@
 import { useState, useRef, ChangeEvent } from "react";
 import MarkdownIt from "markdown-it";
-import {
-  generatePaginationPreview,
-  generatePDF,
-  type PDFOptions,
-  type PreviewResult,
-} from "./core";
+import { type PDFOptions, type PreviewResult, PdfGenerate } from "./core";
 import { handleDownloadCSSTemplate } from "./actions/handleDownloadCSSTemplate";
 import { useUploadCss } from "./actions/handleUploadCss";
 
@@ -84,6 +79,8 @@ function App() {
     handleImportCSS,
   } = useUploadCss();
 
+  const pdfGenerator = new PdfGenerate();
+
   const handleMarkdownChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setMarkdown(e.target.value);
   };
@@ -104,8 +101,7 @@ function App() {
         quality: qualityOptions[quality].quality,
       };
 
-      // 生成分页预览
-      const result = await generatePaginationPreview(
+      const result = await pdfGenerator.generatePreview(
         renderedHTML,
         options,
         customCSS
@@ -121,27 +117,15 @@ function App() {
   };
 
   const handleDownloadPDF = async () => {
-    if (previewResult) {
-      try {
-        // 从预览结果重新生成HTML内容
-        const htmlContent = previewResult.pages
-          .map((page) => page.elements.join(""))
-          .join("");
-
-        await generatePDF(
-          htmlContent,
-          "markdown-document.pdf",
-          {
-            scale: 2,
-            quality: 0.85,
-          },
-          customCSS
-        );
-      } catch (error) {
-        console.error("PDF下载失败:", error);
-        alert("PDF下载失败，请检查控制台错误信息");
-      }
-    }
+    await pdfGenerator.generatePDF(
+      renderedHTML,
+      "markdown-document.pdf",
+      {
+        scale: 2,
+        quality: 0.85,
+      },
+      customCSS
+    );
   };
 
   const handleClosePreview = () => {
