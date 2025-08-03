@@ -12,7 +12,7 @@ export interface CanvasOptions {
   backgroundColor?: string;
   scrollX?: number;
   scrollY?: number;
-  width?: number;
+  width: number;
   height?: number;
   [key: string]: unknown;
 }
